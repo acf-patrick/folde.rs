@@ -1,3 +1,4 @@
+use crate::scope::Scope;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::utils::*;
@@ -12,11 +13,10 @@ pub enum CommandType {
     Input,
 }
 
-#[derive(Debug)]
 pub struct Command {
     pub command_type: CommandType,
     pub folders: Vec<String>,
-    pub variables: Option<Rc<RefCell<Vec<usize>>>>,
+    pub scope: Rc<RefCell<Scope>>,
 }
 
 fn input_error(msg: String) -> std::io::Error {
@@ -36,7 +36,7 @@ impl Command {
         }
     }
 
-    pub fn new(folder: &str) -> std::io::Result<Self> {
+    pub fn new(folder: &str, scope: &Rc<RefCell<Scope>>) -> std::io::Result<Self> {
         let subfolders = sorted_subfolders(folder)?;
         if subfolders.is_empty() {
             return Err(input_error(format!("{folder}: folder is empty")));
@@ -74,7 +74,7 @@ impl Command {
         let cmd = Command {
             command_type,
             folders: subfolders,
-            variables: None,
+            scope: Rc::clone(scope),
         };
 
         Ok(cmd)

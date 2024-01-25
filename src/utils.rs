@@ -1,4 +1,4 @@
-use crate::items::Type;
+use crate::items::Variable;
 use std::fs;
 
 pub fn is_directory(entry: &fs::DirEntry) -> bool {
@@ -16,7 +16,7 @@ pub fn sorted_subfolders(folder: &str) -> std::io::Result<Vec<String>> {
         .filter_map(|entry| match entry {
             Ok(entry) => {
                 if is_directory(&entry) {
-                    Some(entry.file_name().to_str().unwrap().to_owned())
+                    Some(entry.path().to_str().unwrap().to_owned())
                 } else {
                     None
                 }
@@ -42,17 +42,4 @@ pub fn subfolder_count(folder: &str) -> std::io::Result<usize> {
     }
 
     Ok(count)
-}
-
-pub fn get_variable_type(folder: &str) -> std::io::Result<Type> {
-    match subfolder_count(folder)? {
-        0 => Ok(Type::Int),
-        1 => Ok(Type::Float),
-        2 => Ok(Type::String),
-        3 => Ok(Type::Char),
-        count => Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Invalid variable type : {count} folders found."),
-        )),
-    }
 }
