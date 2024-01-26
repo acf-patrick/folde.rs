@@ -1,4 +1,5 @@
 use crate::scope::Scope;
+use std::io::Write;
 use std::{cell::RefCell, rc::Rc};
 
 use super::expression::Expression;
@@ -55,10 +56,12 @@ impl Command {
 
         let mut scope = self.scope.borrow_mut();
 
-        scope
-            .declare_variable_with_type(value.get_type(), var_index)
-            .ok();
-        scope.set_variable(var_index, value)?;
+        if let Err(_) = scope.set_variable(var_index, value.clone()) {
+            scope
+                .declare_variable_with_type(value.get_type(), var_index)
+                .ok();
+            scope.set_variable(var_index, value)?;
+        }
 
         Ok(())
     }
@@ -67,7 +70,9 @@ impl Command {
         let exp = Expression::new(&self.folders[1], &self.scope)?;
         let value = exp.execute()?;
 
-        println!("{value}");
+        print!("{value}");
+        std::io::stdout().flush().unwrap();
+
         Ok(())
     }
 
@@ -136,6 +141,9 @@ impl Command {
                 let var_index = subfolder_count(&self.folders[1])?;
 
                 let mut scope = self.scope.borrow_mut();
+                scope
+                    .declare_variable_with_type(value.get_type(), var_index)
+                    .ok();
                 scope.set_variable(var_index, value)?;
             }
         }

@@ -73,6 +73,7 @@ impl Expression {
         }
 
         let mut value: Vec<u8> = vec![];
+        
         for folder in value_folders {
             let byte = get_byte(&folder)?;
             value.push(byte);
@@ -81,7 +82,7 @@ impl Expression {
         let var = match var_type {
             Type::Int => {
                 let mut bytes: [u8; 4] = [0; 4];
-                for i in 0..4 {
+                for i in 0..value.len() {
                     bytes[i] = value[i];
                 }
 
@@ -90,7 +91,7 @@ impl Expression {
 
             Type::Float => {
                 let mut bytes: [u8; 4] = [0; 4];
-                for i in 0..4 {
+                for i in 0..value.len() {
                     bytes[i] = value[i];
                 }
 

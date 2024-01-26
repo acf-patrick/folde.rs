@@ -186,7 +186,7 @@ impl Div<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Float(Some(other_value / value));
+                        return Variable::Float(Some(value / other_value));
                     }
                     Self::Int(other_value) => {
                         if other_value.is_none() {
@@ -194,7 +194,7 @@ impl Div<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Float(Some(other_value as f32 / value));
+                        return Variable::Float(Some(value / other_value as f32));
                     }
                 }
             }
@@ -215,7 +215,7 @@ impl Div<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Float(Some(other_value / value as f32));
+                        return Variable::Float(Some(value as f32 / other_value));
                     }
                     Self::Int(other_value) => {
                         if other_value.is_none() {
@@ -223,7 +223,7 @@ impl Div<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Float(Some(other_value as f32 / value as f32));
+                        return Variable::Float(Some(value as f32 / other_value as f32));
                     }
                 }
             }
@@ -334,7 +334,7 @@ impl Sub<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Float(Some(other_value - value));
+                        return Variable::Float(Some(value - other_value));
                     }
                     Self::Int(other_value) => {
                         if other_value.is_none() {
@@ -342,7 +342,7 @@ impl Sub<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Float(Some(other_value as f32 - value));
+                        return Variable::Float(Some(value - other_value as f32));
                     }
                 }
             }
@@ -363,7 +363,7 @@ impl Sub<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Float(Some(other_value - value as f32));
+                        return Variable::Float(Some(value as f32 - other_value));
                     }
                     Self::Int(other_value) => {
                         if other_value.is_none() {
@@ -371,7 +371,7 @@ impl Sub<Variable> for Variable {
                         }
                         let other_value = other_value.unwrap();
 
-                        return Variable::Int(Some(other_value - value));
+                        return Variable::Int(Some(value - other_value));
                     }
                 }
             }
