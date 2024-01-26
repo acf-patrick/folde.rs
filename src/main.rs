@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
     //     let cmd = Command::new(&folder)?;
     // }
 
-    let global_scope = Rc::new(RefCell::new(Scope::new()));
+    let global_scope = Rc::new(RefCell::new(Scope::new(None)));
     let cmd_folders = sorted_subfolders(&args[1])?;
 
     for folder in cmd_folders {

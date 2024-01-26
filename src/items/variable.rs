@@ -17,6 +17,54 @@ pub enum Type {
     Char,
 }
 
+impl std::fmt::Display for Variable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Char(value) => {
+                write!(
+                    f,
+                    "{}",
+                    if value.is_some() {
+                        format!("{}", value.unwrap())
+                    } else {
+                        "null".to_owned()
+                    }
+                )
+            }
+
+            Self::Float(value) => write!(
+                f,
+                "{}",
+                if value.is_some() {
+                    format!("{}", value.unwrap())
+                } else {
+                    "null".to_owned()
+                }
+            ),
+
+            Self::Int(value) => write!(
+                f,
+                "{}",
+                if value.is_some() {
+                    format!("{}", value.unwrap())
+                } else {
+                    "null".to_owned()
+                }
+            ),
+
+            Self::String(value) => write!(
+                f,
+                "{}",
+                if value.is_some() {
+                    format!("{}", value.clone().unwrap())
+                } else {
+                    "null".to_owned()
+                }
+            ),
+        }
+    }
+}
+
 impl Variable {
     /// Create a new variable
     ///
@@ -46,6 +94,43 @@ impl Variable {
 
     pub fn same_as(&self, var: &Variable) -> bool {
         self.get_type() == var.get_type()
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Self::Char(value) => {
+                if let Some(value) = value {
+                    *value != '\0'
+                } else {
+                    false
+                }
+            }
+            Self::Float(value) => {
+                if let Some(value) = value {
+                    *value != 0.0
+                } else {
+                    false
+                }
+            }
+            Self::Int(value) => {
+                if let Some(value) = value {
+                    *value != 0
+                } else {
+                    false
+                }
+            }
+            Self::String(value) => {
+                if let Some(value) = value {
+                    !value.is_empty()
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    pub fn is_falsy(&self) -> bool {
+        !self.is_truthy()
     }
 }
 
@@ -80,7 +165,7 @@ impl Div<Variable> for Variable {
                 panic!("Can not divide a Char");
             }
 
-            Self::String(value) => {
+            Self::String(_) => {
                 panic!("Can not divide a String");
             }
 
@@ -154,7 +239,7 @@ impl Mul<Variable> for Variable {
                 panic!("Can not multiply a Char");
             }
 
-            Self::String(value) => {
+            Self::String(_) => {
                 panic!("Can not multiply a String");
             }
 
@@ -228,7 +313,7 @@ impl Sub<Variable> for Variable {
                 panic!("Can not substract from a Char");
             }
 
-            Self::String(value) => {
+            Self::String(_) => {
                 panic!("Can not substract from a String");
             }
 

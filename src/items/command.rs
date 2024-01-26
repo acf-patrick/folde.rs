@@ -51,12 +51,34 @@ impl Command {
         let var_index = subfolder_count(&self.folders[1])?;
 
         let exp = Expression::new(&self.folders[2], &self.scope)?;
-        let exp_type = exp.expression_type;
+        let value = exp.execute()?;
 
         let mut scope = self.scope.borrow_mut();
 
-        // scope.declare_variable_with_type(var_type, index)
-        // scope.declare_variable(), index)
+        scope
+            .declare_variable_with_type(value.get_type(), var_index)
+            .ok();
+        scope.set_variable(var_index, value);
+
+        Ok(())
+    }
+
+    fn print_expression(&self) -> std::io::Result<()> {
+        let exp = Expression::new(&self.folders[1], &self.scope)?;
+        let value = exp.execute()?;
+
+        println!("{value}");
+        Ok(())
+    }
+
+    fn execute_in_new_scope(&self, parent_folder: &str) -> std::io::Result<()> {
+        let subfolders = sorted_subfolders(parent_folder)?;
+        let scope = Rc::new(RefCell::new(Scope::new(Some(self.scope.clone()))));
+
+        for folder in subfolders {
+            let cmd = Command::new(&folder, &scope)?;
+            cmd.run()?;
+        }
 
         Ok(())
     }
@@ -68,6 +90,30 @@ impl Command {
             }
             CommandType::Let => {
                 self.store_expression()?;
+            }
+            CommandType::Print => {
+                self.print_expression()?;
+            }
+            CommandType::If => {
+                let exp = Expression::new(&self.folders[1], &self.scope)?;
+                let value = exp.execute()?;
+
+                if value.is_truthy() {
+                    self.execute_in_new_scope(&self.folders[2])?;
+                }
+            }
+            CommandType::While => loop {
+                let exp = Expression::new(&self.folders[1], &self.scope)?;
+                let value = exp.execute()?;
+
+                if value.is_truthy() {
+                    self.execute_in_new_scope(&self.folders[2])?;
+                } else {
+                    break;
+                }
+            },
+            CommandType::Input => {
+                
             }
         }
 

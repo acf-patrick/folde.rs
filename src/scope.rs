@@ -11,10 +11,10 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn new() -> Self {
+    pub fn new(parent: Option<Rc<RefCell<Scope>>>) -> Self {
         Scope {
             variables: HashMap::new(),
-            parent: None,
+            parent,
         }
     }
 
