@@ -1,4 +1,4 @@
-use std::{any::Any, ops::Add};
+use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Variable {
@@ -56,6 +56,228 @@ impl From<Type> for Variable {
             Type::Int => Variable::Int(None),
             Type::Float => Variable::Float(None),
             Type::String => Variable::String(None),
+        }
+    }
+}
+
+impl Div<Variable> for Variable {
+    type Output = Variable;
+
+    fn div(self, other: Variable) -> Self::Output {
+        match self {
+            Self::Char(_) => {
+                panic!("Can not divide a Char");
+            }
+
+            Self::String(value) => {
+                panic!("Can not divide a String");
+            }
+
+            Self::Float(value) => {
+                if value.is_none() {
+                    panic!("Use of uninitialized float variable");
+                }
+                let value = value.unwrap();
+
+                match other {
+                    Self::Char(_) | Self::String(_) => {
+                        panic!("Can not divide Float by Char or String");
+                    }
+                    Self::Float(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized float variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value / value));
+                    }
+                    Self::Int(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized int variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value as f32 / value));
+                    }
+                }
+            }
+
+            Self::Int(value) => {
+                if value.is_none() {
+                    panic!("Use of ininitialized int variable");
+                }
+                let value = value.unwrap();
+
+                match other {
+                    Self::Char(_) | Self::String(_) => {
+                        panic!("Can not divide Int by Char or String");
+                    }
+                    Self::Float(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized float variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value / value as f32));
+                    }
+                    Self::Int(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized int variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value as f32 / value as f32));
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Mul<Variable> for Variable {
+    type Output = Variable;
+
+    fn mul(self, other: Variable) -> Self::Output {
+        match self {
+            Self::Char(_) => {
+                panic!("Can not multiply a Char");
+            }
+
+            Self::String(value) => {
+                panic!("Can not multiply a String");
+            }
+
+            Self::Float(value) => {
+                if value.is_none() {
+                    panic!("Use of uninitialized float variable");
+                }
+                let value = value.unwrap();
+
+                match other {
+                    Self::Char(_) | Self::String(_) => {
+                        panic!("Can not multiply Float by Char or String");
+                    }
+                    Self::Float(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized float variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value * value));
+                    }
+                    Self::Int(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized int variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value as f32 * value));
+                    }
+                }
+            }
+
+            Self::Int(value) => {
+                if value.is_none() {
+                    panic!("Use of ininitialized int variable");
+                }
+                let value = value.unwrap();
+
+                match other {
+                    Self::Char(_) | Self::String(_) => {
+                        panic!("Can not multiply Int by Char or String");
+                    }
+                    Self::Float(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized float variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value * value as f32));
+                    }
+                    Self::Int(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized int variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Int(Some(other_value * value));
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Sub<Variable> for Variable {
+    type Output = Variable;
+
+    fn sub(self, other: Variable) -> Variable {
+        match self {
+            Self::Char(_) => {
+                panic!("Can not substract from a Char");
+            }
+
+            Self::String(value) => {
+                panic!("Can not substract from a String");
+            }
+
+            Self::Float(value) => {
+                if value.is_none() {
+                    panic!("Use of uninitialized float variable");
+                }
+                let value = value.unwrap();
+
+                match other {
+                    Self::Char(_) | Self::String(_) => {
+                        panic!("Can not substract Float to Char or String");
+                    }
+                    Self::Float(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized float variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value - value));
+                    }
+                    Self::Int(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized int variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value as f32 - value));
+                    }
+                }
+            }
+
+            Self::Int(value) => {
+                if value.is_none() {
+                    panic!("Use of ininitialized int variable");
+                }
+                let value = value.unwrap();
+
+                match other {
+                    Self::Char(_) | Self::String(_) => {
+                        panic!("Can not substract Int to Char or String");
+                    }
+                    Self::Float(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized float variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Float(Some(other_value - value as f32));
+                    }
+                    Self::Int(other_value) => {
+                        if other_value.is_none() {
+                            panic!("Use of uninitialized int variable");
+                        }
+                        let other_value = other_value.unwrap();
+
+                        return Variable::Int(Some(other_value - value));
+                    }
+                }
+            }
         }
     }
 }
@@ -145,6 +367,6 @@ impl Add<Variable> for Variable {
                     }
                 }
             }
-        };
+        }
     }
 }
