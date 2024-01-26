@@ -5,3 +5,12 @@ version = 3
 [[package]]
 name = "folders-intrpreter"
 version = "0.1.0"
+dependencies = [
+ "human-sort",
+]
+
+[[package]]
+name = "human-sort"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "140a09c9305e6d5e557e2ed7cbc68e05765a7d4213975b87cb04920689cc6219"

@@ -2,7 +2,7 @@ use crate::scope::Scope;
 use std::{cell::RefCell, rc::Rc};
 
 use super::expression::Expression;
-use super::variable::{Type as VariableType, Variable};
+use super::variable::Variable;
 use crate::utils::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +58,7 @@ impl Command {
         scope
             .declare_variable_with_type(value.get_type(), var_index)
             .ok();
-        scope.set_variable(var_index, value);
+        scope.set_variable(var_index, value)?;
 
         Ok(())
     }

@@ -28,7 +28,8 @@ pub fn sorted_subfolders(folder: &str) -> std::io::Result<Vec<String>> {
         })
         .collect();
 
-    sorted_folders.sort_by(|a, b| a.cmp(&b));
+    sorted_folders.sort_by(|a, b| human_sort::compare(&a.to_lowercase(), &b.to_lowercase()));
+
     Ok(sorted_folders)
 }
 

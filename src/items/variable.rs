@@ -65,6 +65,7 @@ impl std::fmt::Display for Variable {
     }
 }
 
+#[allow(dead_code)]
 impl Variable {
     /// Create a new variable
     ///
