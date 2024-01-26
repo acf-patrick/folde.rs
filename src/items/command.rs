@@ -2,7 +2,7 @@ use crate::scope::Scope;
 use std::{cell::RefCell, rc::Rc};
 
 use super::expression::Expression;
-use super::variable::Type as VariableType;
+use super::variable::{Type as VariableType, Variable};
 use crate::utils::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,6 +83,25 @@ impl Command {
         Ok(())
     }
 
+    fn get_input(&self) -> std::io::Result<Variable> {
+        let mut input = String::new();
+
+        std::io::stdin().read_line(&mut input)?;
+
+        let input = input.trim();
+        let var = if let Ok(int) = input.parse::<i32>() {
+            Variable::Int(Some(int))
+        } else if let Ok(float) = input.parse::<f32>() {
+            Variable::Float(Some(float))
+        } else if input.len() == 1 {
+            Variable::Char(Some(input.chars().next().unwrap()))
+        } else {
+            Variable::String(Some(input.to_owned()))
+        };
+
+        Ok(var)
+    }
+
     pub fn run(&self) -> std::io::Result<()> {
         match self.command_type {
             CommandType::Declare => {
@@ -113,7 +132,11 @@ impl Command {
                 }
             },
             CommandType::Input => {
-                
+                let value = self.get_input()?;
+                let var_index = subfolder_count(&self.folders[1])?;
+
+                let mut scope = self.scope.borrow_mut();
+                scope.set_variable(var_index, value)?;
             }
         }
 
