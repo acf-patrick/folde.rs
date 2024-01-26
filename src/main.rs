@@ -1,3 +1,5 @@
+use scope::Scope;
+
 mod items;
 mod utils;
 mod scope;
@@ -12,6 +14,8 @@ fn main() -> std::io::Result<()> {
     // for folder in cmd_folders {
     //     let cmd = Command::new(&folder)?;
     // }
+
+    let global_scope = Scope::new();
 
     Ok(())
 }

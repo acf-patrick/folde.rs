@@ -5,8 +5,8 @@ use crate::utils::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommandType {
-    If(Vec<usize>),
-    While(Vec<usize>),
+    If,
+    While,
     Declare,
     Let,
     Print,
@@ -19,15 +19,11 @@ pub struct Command {
     pub scope: Rc<RefCell<Scope>>,
 }
 
-fn input_error(msg: String) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::InvalidInput, msg)
-}
-
 impl Command {
     pub fn get_type(folder_count: usize) -> Option<CommandType> {
         match folder_count {
-            0 => Some(CommandType::If(vec![])),
-            1 => Some(CommandType::While(vec![])),
+            0 => Some(CommandType::If),
+            1 => Some(CommandType::While),
             2 => Some(CommandType::Declare),
             3 => Some(CommandType::Let),
             4 => Some(CommandType::Print),
@@ -74,7 +70,7 @@ impl Command {
         let cmd = Command {
             command_type,
             folders: subfolders,
-            scope: Rc::clone(scope),
+            scope: scope.clone(),
         };
 
         Ok(cmd)

@@ -1,5 +1,8 @@
-use crate::items::Variable;
 use std::fs;
+
+pub fn input_error(msg: String) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::InvalidInput, msg)
+}
 
 pub fn is_directory(entry: &fs::DirEntry) -> bool {
     if let Ok(metadata) = entry.metadata() {
