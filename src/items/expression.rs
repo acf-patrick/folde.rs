@@ -1,6 +1,7 @@
 use crate::{
+    items::variable::Type,
     scope::Scope,
-    utils::{input_error, sorted_subfolders, subfolder_count},
+    utils::{get_byte, input_error, sorted_subfolders, subfolder_count},
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -45,29 +46,113 @@ impl Expression {
         }
     }
 
+    fn get_literal_value(&self) -> std::io::Result<Variable> {
+        let var_type = Type::from(subfolder_count(&self.folders[1])?);
+
+        let value_folders = sorted_subfolders(&self.folders[2])?;
+        match var_type {
+            Type::Int | Type::Float => {
+                if value_folders.len() > 4 {
+                    return Err(input_error(format!(
+                        "{} : invalid literal value, Int and Float are 32-bit but found {} subfolders",
+                        self.folders[2],
+                        value_folders.len()
+                    )));
+                }
+            }
+            Type::Char => {
+                if value_folders.len() > 1 {
+                    return Err(input_error(format!(
+                        "{} : invalid literal value, Char should be one byte unicode but found {} subfolders", 
+                        self.folders[2], 
+                        value_folders.len()
+                    )));
+                }
+            }
+            _ => {}
+        }
+
+        let mut value: Vec<u8> = vec![];
+        for folder in value_folders {
+            let byte = get_byte(&folder)?;
+            value.push(byte);
+        }
+
+        let var = match var_type {
+            Type::Int => {
+                let mut bytes: [u8; 4] = [0; 4];
+                for i in 0..4 {
+                    bytes[i] = value[i];
+                }
+
+                Variable::Int(Some(i32::from_ne_bytes(bytes)))
+            }
+
+            Type::Float => {
+                let mut bytes: [u8; 4] = [0; 4];
+                for i in 0..4 {
+                    bytes[i] = value[i];
+                }
+
+                Variable::Float(Some(f32::from_ne_bytes(bytes)))
+            }
+
+            Type::Char => {
+                Variable::Char(Some(char::from(value[0])))
+            }
+
+            Type::String => {
+                let mut str_value = String::new();
+                for byte in value {
+                    str_value.push(char::from(byte));
+                }
+                
+                Variable::String(Some(str_value))
+            }
+        };
+
+        Ok(var)
+    }
+
     pub fn execute(&self) -> std::io::Result<Variable> {
         let scope = self.scope.borrow();
 
-        match self.expression_type {
-            ExpressionType::Variable => {
-                let folder_count = subfolder_count(&self.folders[1])?;
+        if self.expression_type == ExpressionType::Variable {
+            let folder_count = subfolder_count(&self.folders[1])?;
 
-                if let Some(var) = scope.get_variable(folder_count) {
-                    Ok(var)
-                } else {
-                    Err(input_error(format!(
-                        "{} : expression error, variable var_{folder_count} does not exist",
-                        self.folders[1]
-                    )))
-                }
+            if let Some(var) = scope.get_variable(folder_count) {
+                Ok(var)
+            } else {
+                Err(input_error(format!(
+                    "{} : expression error, variable var_{folder_count} does not exist",
+                    self.folders[1]
+                )))
             }
+        } else if self.expression_type == ExpressionType::LiteralValue {
+            self.get_literal_value()
+        } else {
+            let first = Expression::new(&self.folders[1], &self.scope)?;
+            let second = Expression::new(&self.folders[2], &self.scope)?;
 
-            ExpressionType::Add => {
-                let first = Expression::new(&self.folders[1], &self.scope)?;
-                let second = Expression::new(&self.folders[2], &self.scope)?;
+            let a = first.execute()?;
+            let b = second.execute()?;
 
-                let res1 = first.execute()?;
-                let res2 = second.execute()?;
+            match self.expression_type {
+                ExpressionType::Add => Ok(a + b),
+
+                ExpressionType::Substract => Ok(a - b),
+
+                ExpressionType::Multiply => Ok(a * b),
+
+                ExpressionType::Divide => Ok(a / b),
+
+                ExpressionType::EqualTo => Ok(Variable::Int(Some((a == b) as i32))),
+
+                ExpressionType::GreaterThan => Ok(Variable::Int(Some((a > b) as i32))),
+
+                ExpressionType::LessThan => Ok(Variable::Int(Some((a < b) as i32))),
+
+                _ => Ok(Variable::Int(None)),
             }
         }
     }

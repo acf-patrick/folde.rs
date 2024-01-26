@@ -1,6 +1,6 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Variable {
     Int(Option<i32>),
     Float(Option<f32>),
@@ -56,6 +56,17 @@ impl From<Type> for Variable {
             Type::Int => Variable::Int(None),
             Type::Float => Variable::Float(None),
             Type::String => Variable::String(None),
+        }
+    }
+}
+
+impl From<usize> for Type {
+    fn from(value: usize) -> Self {
+        match value {
+            1 => Self::Float,
+            2 => Self::String,
+            3 => Self::Char,
+            _ => Self::Int,
         }
     }
 }
