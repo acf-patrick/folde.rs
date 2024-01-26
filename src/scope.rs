@@ -1,11 +1,13 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{items::variable::Variable, utils::input_error};
+use crate::{
+    items::variable::{Type as VariableType, Variable},
+    utils::input_error,
+};
 
 pub struct Scope {
     variables: HashMap<usize, Variable>,
     parent: Option<Rc<RefCell<Scope>>>,
-    child: Option<Rc<RefCell<Scope>>>,
 }
 
 impl Scope {
@@ -13,7 +15,6 @@ impl Scope {
         Scope {
             variables: HashMap::new(),
             parent: None,
-            child: None,
         }
     }
 
@@ -29,6 +30,21 @@ impl Scope {
 
         let variable = Variable::new(folders_count)?;
         self.variables.insert(index, variable);
+
+        Ok(())
+    }
+
+    pub fn declare_variable_with_type(
+        &mut self,
+        var_type: VariableType,
+        index: usize,
+    ) -> std::io::Result<()> {
+        if self.variables.get(&index).is_some() {
+            return Err(input_error(format!("var_{index} declared more than once")));
+        }
+
+        let var = Variable::from(var_type);
+        self.variables.insert(index, var);
 
         Ok(())
     }

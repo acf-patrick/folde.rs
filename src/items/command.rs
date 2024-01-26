@@ -1,6 +1,8 @@
 use crate::scope::Scope;
 use std::{cell::RefCell, rc::Rc};
 
+use super::expression::Expression;
+use super::variable::Type as VariableType;
 use crate::utils::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,9 +16,13 @@ pub enum CommandType {
 }
 
 pub struct Command {
-    pub command_type: CommandType,
-    pub folders: Vec<String>,
-    pub scope: Rc<RefCell<Scope>>,
+    /// sorted list of subfolder associated to this command
+    folders: Vec<String>,
+
+    /// scope that own this command
+    scope: Rc<RefCell<Scope>>,
+
+    command_type: CommandType,
 }
 
 impl Command {
@@ -32,10 +38,48 @@ impl Command {
         }
     }
 
+    fn declare_variable(&self) -> std::io::Result<()> {
+        let folders_count = subfolder_count(&self.folders[1])?;
+        let index = subfolder_count(&self.folders[2])?;
+
+        let mut scope = self.scope.borrow_mut();
+        scope.declare_variable(folders_count, index)
+    }
+
+    /// 'let' instruction
+    fn store_expression(&self) -> std::io::Result<()> {
+        let var_index = subfolder_count(&self.folders[1])?;
+
+        let exp = Expression::new(&self.folders[2], &self.scope)?;
+        let exp_type = exp.expression_type;
+
+        let mut scope = self.scope.borrow_mut();
+
+        // scope.declare_variable_with_type(var_type, index)
+        // scope.declare_variable(), index)
+
+        Ok(())
+    }
+
+    pub fn run(&self) -> std::io::Result<()> {
+        match self.command_type {
+            CommandType::Declare => {
+                self.declare_variable()?;
+            }
+            CommandType::Let => {
+                self.store_expression()?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn new(folder: &str, scope: &Rc<RefCell<Scope>>) -> std::io::Result<Self> {
         let subfolders = sorted_subfolders(folder)?;
         if subfolders.is_empty() {
-            return Err(input_error(format!("{folder}: folder is empty")));
+            return Err(input_error(format!(
+                "{folder}: invalid command, folder is empty"
+            )));
         }
 
         let count = subfolder_count(&subfolders[0])?;
@@ -44,7 +88,7 @@ impl Command {
         if command_type.is_none() {
             let base = std::path::Path::new(folder);
             return Err(input_error(format!(
-                "{} : invalid number of subfolder {count}",
+                "{} : invalid command type, {count} subfolders found",
                 base.join(std::path::Path::new(&subfolders[0]))
                     .to_str()
                     .unwrap()
@@ -53,7 +97,7 @@ impl Command {
         let command_type = command_type.unwrap();
 
         let folder_count = subfolders.len();
-        if command_type != CommandType::Input && command_type != CommandType::Print {
+        if command_type == CommandType::Input || command_type == CommandType::Print {
             if folder_count != 2 {
                 return Err(input_error(format!(
                     "{folder} : expected 2 folders, {folder_count} found"
