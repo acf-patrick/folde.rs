@@ -1,5 +1,5 @@
 [package]
-name = "folders-intrpreter"
+name = "folders"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 human-sort = "0.2.2"
+clap = { version = "4.4.18", features = ["derive"] }

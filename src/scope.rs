@@ -101,4 +101,16 @@ impl Scope {
             )))
         }
     }
+
+    pub fn set_or_create_variable(
+        &mut self,
+        index: usize,
+        var_type: VariableType,
+        value: Variable,
+    ) {
+        if self.set_variable(index, value.clone()).is_err() {
+            self.declare_variable_with_type(var_type, index).ok();
+            self.set_variable(index, value).ok();
+        }
+    }
 }

@@ -1,4 +1,5 @@
 use crate::scope::Scope;
+use crate::transpile::Transpile;
 use std::io::Write;
 use std::{cell::RefCell, rc::Rc};
 
@@ -24,6 +25,13 @@ pub struct Command {
     scope: Rc<RefCell<Scope>>,
 
     command_type: CommandType,
+
+    translation_context: Option<TranslationContext>,
+}
+
+#[derive(Clone, Default)]
+struct TranslationContext {
+    token: String,
 }
 
 impl Command {
@@ -39,12 +47,19 @@ impl Command {
         }
     }
 
-    fn declare_variable(&self) -> std::io::Result<()> {
+    fn declare_variable(&mut self) -> std::io::Result<()> {
         let folders_count = subfolder_count(&self.folders[1])?;
         let index = subfolder_count(&self.folders[2])?;
 
         let mut scope = self.scope.borrow_mut();
-        scope.declare_variable(folders_count, index)
+        scope.declare_variable(folders_count, index)?;
+
+        if let Some(ctx) = self.translation_context.as_mut() {
+            let var = scope.get_variable(index).unwrap();
+            ctx.token = format!("let var_{index}: {};", var.get_type().as_str());
+        }
+
+        Ok(())
     }
 
     /// 'let' instruction
@@ -81,7 +96,7 @@ impl Command {
         let scope = Rc::new(RefCell::new(Scope::new(Some(self.scope.clone()))));
 
         for folder in subfolders {
-            let cmd = Command::new(&folder, &scope)?;
+            let mut cmd = Command::new(&folder, &scope)?;
             cmd.run()?;
         }
 
@@ -107,7 +122,7 @@ impl Command {
         Ok(var)
     }
 
-    pub fn run(&self) -> std::io::Result<()> {
+    pub fn run(&mut self) -> std::io::Result<()> {
         match self.command_type {
             CommandType::Declare => {
                 self.declare_variable()?;
@@ -192,8 +207,24 @@ impl Command {
             command_type,
             folders: subfolders,
             scope: scope.clone(),
+            translation_context: None,
         };
 
         Ok(cmd)
+    }
+}
+
+impl Transpile for Command {
+    fn transpile(&mut self) -> std::io::Result<String> {
+        self.translation_context = Some(TranslationContext::default());
+
+        match self.command_type {
+            CommandType::Declare => {
+                self.declare_variable()?;
+            }
+            _ => todo!(),
+        }
+
+        Ok(self.translation_context.clone().unwrap().token)
     }
 }
