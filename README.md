@@ -4,7 +4,26 @@
 Folders is a language where the program is encoded in to a directory structure. This *esoteric programming language* was [created by Daniel Temkin](https://danieltemkin.com/Esolangs/Folders/)
 
 ## Usage
-> If you know Rust, you would know how to run this 🦀
+You can either execute a Folder code directly or transpile it to **Rust** code.
+```bash
+cargo run ./samples/SimpleEcho <<< Hello
+> Hello
+```
+You can translate Folders to actual source code with the ```-t``` or ```--transpile``` option.
+```bash
+cargo run -- -t ./samples/HelloWorld
+```
+will output the following code
+```Rust
+use std::io::Write;
+
+fn main() {
+        print!("{}", "Hello, World!".to_owned());
+        std::io::stdout().flush().unwrap();      
+}
+```
+
+> The output code is not the best Rust written out there but still is Rust
 
 ## Instructions
 Commands are read in alphabetical order.
