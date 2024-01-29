@@ -224,15 +224,51 @@ impl Command {
 impl Transpile for Command {
     fn transpile(&mut self) -> std::io::Result<String> {
         self.translation_context = Some(TranslationContext::default());
-        // let ctx = self.translation_context.as_mut().unwrap();
+        let ctx = self.translation_context.as_mut().unwrap();
 
         match self.command_type {
             CommandType::Declare => {
                 self.declare_variable()?;
             }
+
             CommandType::Let => {
                 self.store_expression()?;
             }
+
+            CommandType::If => {
+                let mut exp = Expression::new(&self.folders[1], &self.scope)?;
+                let token = exp.transpile()?;
+                let value = exp.execute()?;
+
+                let token = match value.get_type() {
+                    Type::Char => format!("{token} != '\0'"),
+                    Type::Float => format!("{token} != 0.0"),
+                    Type::Int => format!("{token} != 0"),
+                    Type::String => {
+                        if exp.expression_type == ExpressionType::Add {
+                            format!("!({token}).is_empty()")
+                        } else {
+                            format!("!{token}.is_empty()")
+                        }
+                    }
+                };
+
+                ctx.token = format!("\nif {token} {{\n");
+
+                let subfolders = sorted_subfolders(&self.folders[2])?;
+                let scope = Rc::new(RefCell::new(Scope::new(Some(self.scope.clone()))));
+
+                for folder in subfolders {
+                    let mut cmd = Command::new(&folder, &scope)?;
+
+                    for line in cmd.transpile()?.split("\n") {
+                        ctx.token += &format!("\t{line}");
+                    }
+                }
+
+                ctx.token += "}";
+            }
+
             _ => todo!(),
         }
 

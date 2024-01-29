@@ -36,13 +36,18 @@ fn main() -> std::io::Result<()> {
     let cmd_folders = sorted_subfolders(&cli.folder)?;
 
     // used for translation
-    let mut token: Vec<String> = vec![];
+    let mut lines: Vec<String> = vec![];
 
     for folder in cmd_folders {
         let mut cmd = Command::new(&folder, &global_scope)?;
 
         if cli.transpile {
-            token.push(cmd.transpile()?);
+            lines.extend(
+                cmd.transpile()?
+                    .split("\n")
+                    .map(|line| line.to_owned())
+                    .into_iter(),
+            );
         } else {
             cmd.run()?;
         }
@@ -50,8 +55,8 @@ fn main() -> std::io::Result<()> {
 
     if cli.transpile {
         println!("fn main() {{");
-        for token in token {
-            println!("\t{token}");
+        for line in lines {
+            println!("\t{line}");
         }
         println!("}}");
     }
