@@ -245,6 +245,7 @@ impl Transpile for Expression {
             (ExpressionType::Divide, "/"),
             (ExpressionType::GreaterThan, ">"),
             (ExpressionType::LessThan, "<"),
+            (ExpressionType::EqualTo, "=="),
           ]);
 
           if right_is_string && self.expression_type == ExpressionType::Add {

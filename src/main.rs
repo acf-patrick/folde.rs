@@ -28,7 +28,7 @@ struct Cli {
 fn main() -> std::io::Result<()> {
     // let cli = Cli::parse();
     let cli = Cli {
-        folder: "./samples/test-translation".to_owned(),
+        folder: "./samples/99Bottles".to_owned(),
         transpile: true,
     };
 
@@ -37,6 +37,7 @@ fn main() -> std::io::Result<()> {
 
     // used for translation
     let mut lines: Vec<String> = vec![];
+    let mut using_print = false;
 
     for folder in cmd_folders {
         let mut cmd = Command::new(&folder, &global_scope)?;
@@ -48,12 +49,20 @@ fn main() -> std::io::Result<()> {
                     .map(|line| line.to_owned())
                     .into_iter(),
             );
+
+            if lines.iter().find(|line| line.contains("print")).is_some() {
+                using_print = true;
+            }
         } else {
             cmd.run()?;
         }
     }
 
     if cli.transpile {
+        if using_print {
+            println!("use std::io::Write;\n");
+        }
+
         println!("fn main() {{");
         for line in lines {
             println!("\t{line}");

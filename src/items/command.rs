@@ -240,18 +240,23 @@ impl Transpile for Command {
                 let token = exp.transpile()?;
                 let value = exp.execute()?;
 
-                let token = match value.get_type() {
-                    Type::Char => format!("{token} != '\0'"),
-                    Type::Float => format!("{token} != 0.0"),
-                    Type::Int => format!("{token} != 0"),
-                    Type::String => {
-                        if exp.expression_type == ExpressionType::Add {
-                            format!("!({token}).is_empty()")
-                        } else {
-                            format!("!{token}.is_empty()")
-                        }
-                    }
-                };
+                let token = match exp.expression_type {
+                  ExpressionType::EqualTo
+                  | ExpressionType::GreaterThan
+                  | ExpressionType::LessThan => token,
+                  _ => match value.get_type() {
+                      Type::Char => format!("{token} != '\0'"),
+                      Type::Float => format!("{token} != 0.0"),
+                      Type::Int => format!("{token} != 0"),
+                      Type::String => {
+                          if exp.expression_type == ExpressionType::Add {
+                              format!("!({token}).is_empty()")
+                          } else {
+                              format!("!{token}.is_empty()")
+                          }
+                      }
+                  },
+              };
 
                 ctx.token = format!("\nif {token} {{\n");
 
@@ -262,14 +267,64 @@ impl Transpile for Command {
                     let mut cmd = Command::new(&folder, &scope)?;
 
                     for line in cmd.transpile()?.split("\n") {
-                        ctx.token += &format!("\t{line}");
+                        ctx.token += &format!("\t{line}\n");
                     }
                 }
 
                 ctx.token += "}";
             }
 
-            _ => todo!(),
+            CommandType::While => {
+                let mut exp = Expression::new(&self.folders[1], &self.scope)?;
+                let token = exp.transpile()?;
+                let value = exp.execute()?;
+
+                let token = match exp.expression_type {
+                    ExpressionType::EqualTo
+                    | ExpressionType::GreaterThan
+                    | ExpressionType::LessThan => token,
+                    _ => match value.get_type() {
+                        Type::Char => format!("{token} != '\0'"),
+                        Type::Float => format!("{token} != 0.0"),
+                        Type::Int => format!("{token} != 0"),
+                        Type::String => {
+                            if exp.expression_type == ExpressionType::Add {
+                                format!("!({token}).is_empty()")
+                            } else {
+                                format!("!{token}.is_empty()")
+                            }
+                        }
+                    },
+                };
+
+                ctx.token = format!("\nwhile {token} {{\n");
+
+                let subfolders = sorted_subfolders(&self.folders[2])?;
+                let scope = Rc::new(RefCell::new(Scope::new(Some(self.scope.clone()))));
+
+                for folder in subfolders {
+                    let mut cmd = Command::new(&folder, &scope)?;
+
+                    for line in cmd.transpile()?.split("\n") {
+                        ctx.token += &format!("\t{line}\n");
+                    }
+                }
+
+                ctx.token += "}";
+            }
+
+            CommandType::Print => {
+                let mut exp = Expression::new(&self.folders[1], &self.scope)?;
+                let token = exp.transpile()?;
+
+                ctx.token += "\n";
+                ctx.token += &format!("print!(\"{{}}\", {token});\n");
+                ctx.token += "std::io::stdout().flush().unwrap();\n";
+            }
+
+            CommandType::Input => {
+                todo!()
+            }
         }
 
         Ok(self.translation_context.clone().unwrap().token)
