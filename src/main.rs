@@ -26,11 +26,7 @@ struct Cli {
 }
 
 fn main() -> std::io::Result<()> {
-    // let cli = Cli::parse();
-    let cli = Cli {
-        folder: "./samples/99Bottles".to_owned(),
-        transpile: true,
-    };
+    let cli = Cli::parse();
 
     let global_scope = Rc::new(RefCell::new(Scope::new(None)));
     let cmd_folders = sorted_subfolders(&cli.folder)?;

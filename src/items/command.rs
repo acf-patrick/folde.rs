@@ -241,22 +241,22 @@ impl Transpile for Command {
                 let value = exp.execute()?;
 
                 let token = match exp.expression_type {
-                  ExpressionType::EqualTo
-                  | ExpressionType::GreaterThan
-                  | ExpressionType::LessThan => token,
-                  _ => match value.get_type() {
-                      Type::Char => format!("{token} != '\0'"),
-                      Type::Float => format!("{token} != 0.0"),
-                      Type::Int => format!("{token} != 0"),
-                      Type::String => {
-                          if exp.expression_type == ExpressionType::Add {
-                              format!("!({token}).is_empty()")
-                          } else {
-                              format!("!{token}.is_empty()")
-                          }
-                      }
-                  },
-              };
+                    ExpressionType::EqualTo
+                    | ExpressionType::GreaterThan
+                    | ExpressionType::LessThan => token,
+                    _ => match value.get_type() {
+                        Type::Char => format!("{token} != '\0'"),
+                        Type::Float => format!("{token} != 0.0"),
+                        Type::Int => format!("{token} != 0"),
+                        Type::String => {
+                            if exp.expression_type == ExpressionType::Add {
+                                format!("!({token}).is_empty()")
+                            } else {
+                                format!("!{token}.is_empty()")
+                            }
+                        }
+                    },
+                };
 
                 ctx.token = format!("\nif {token} {{\n");
 
@@ -317,13 +317,20 @@ impl Transpile for Command {
                 let mut exp = Expression::new(&self.folders[1], &self.scope)?;
                 let token = exp.transpile()?;
 
-                ctx.token += "\n";
                 ctx.token += &format!("print!(\"{{}}\", {token});\n");
                 ctx.token += "std::io::stdout().flush().unwrap();\n";
             }
 
             CommandType::Input => {
-                todo!()
+                let var_index = subfolder_count(&self.folders[1])?;
+                let mut scope = self.scope.borrow_mut();
+
+                if scope.get_variable(var_index).is_none() {
+                  ctx.token += &format!("let mut var_{var_index} = String::new();\n");
+                }
+                ctx.token += &format!("std::io::stdin().readline(&mut var_{var_index}).unwrap();\n");
+
+                scope.set_or_create_variable(var_index, Variable::String(Some(String::new())))?;
             }
         }
 
