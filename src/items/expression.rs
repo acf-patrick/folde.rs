@@ -1,11 +1,11 @@
 use crate::{
     items::variable::Type, scope::Scope, transpile::Transpile, utils::{get_byte, input_error, sorted_subfolders, subfolder_count}
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::variable::Variable;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpressionType {
     Variable,
     Add,
@@ -196,8 +196,7 @@ impl Transpile for Expression {
         }
 
         ExpressionType::LiteralValue => {
-          let value = self.get_literal_value()?;
-          let value = match value {
+          let value = match self.get_literal_value()? {
             Variable::Char(value) => format!("'{}'", value.unwrap()),
             Variable::Float(value) => format!("{} as f32", value.unwrap()),
             Variable::Int(value) => value.unwrap().to_string(),
@@ -206,7 +205,7 @@ impl Transpile for Expression {
               if value.is_empty() {
                 "String::new()".to_owned()
               } else {
-                format!("\"{}\".to_owned", value)
+                format!("\"{}\".to_owned()", value)
               }
             }
           };
@@ -214,7 +213,46 @@ impl Transpile for Expression {
           Ok(value)
         }
 
-        _ => todo!()
+        _ => {
+          let left: String;
+          {
+            let mut exp = Self::new(&self.folders[1], &self.scope)?;
+            if exp.expression_type != ExpressionType::Variable && exp.expression_type != ExpressionType::LiteralValue {
+              left = format!("({})", exp.transpile()?);
+            } else {
+              left = exp.transpile()?;
+            }
+          }
+          
+          let right: String;
+          let mut right_is_string = false;
+          {
+            let mut exp = Self::new(&self.folders[2], &self.scope)?;
+            if exp.expression_type != ExpressionType::Variable && exp.expression_type != ExpressionType::LiteralValue {
+              right = format!("({})", exp.transpile()?);
+            } else {
+              right = exp.transpile()?;
+              
+              let value_type = exp.execute()?.get_type();
+              right_is_string = value_type == Type::String; 
+            }
+          }
+
+          let operators = HashMap::from([
+            (ExpressionType::Add, "+"),
+            (ExpressionType::Substract, "-"),
+            (ExpressionType::Multiply, "*"),
+            (ExpressionType::Divide, "/"),
+            (ExpressionType::GreaterThan, ">"),
+            (ExpressionType::LessThan, "<"),
+          ]);
+
+          if right_is_string && self.expression_type == ExpressionType::Add {
+            Ok(format!("{left} + &{right}"))
+          } else {
+            Ok(format!("{left} {} {right}", operators.get(&self.expression_type).unwrap()))
+          }
+        }
       }
   }
 }

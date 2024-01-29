@@ -77,9 +77,7 @@ impl Command {
                 ctx.token += "let mut ";
             }
 
-            if value.get_type() == Type::String
-                && exp.expression_type != ExpressionType::LiteralValue
-            {
+            if value.get_type() == Type::String && exp.expression_type == ExpressionType::Variable {
                 // make sure to not take ownership of the new string
                 ctx.token += &format!("var_{var_index} = {rvalue}.clone();");
             } else {
