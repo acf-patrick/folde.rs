@@ -26,20 +26,23 @@ struct Cli {
 }
 
 fn main() -> std::io::Result<()> {
-    let cli = Cli::parse();
+    // let cli = Cli::parse();
+    let cli = Cli {
+        folder: "./samples/test-translation".to_owned(),
+        transpile: true,
+    };
 
     let global_scope = Rc::new(RefCell::new(Scope::new(None)));
     let cmd_folders = sorted_subfolders(&cli.folder)?;
 
     // used for translation
-    let mut token = String::new();
+    let mut token: Vec<String> = vec![];
 
     for folder in cmd_folders {
         let mut cmd = Command::new(&folder, &global_scope)?;
 
         if cli.transpile {
-            token += &cmd.transpile()?;
-            token += "\n";
+            token.push(cmd.transpile()?);
         } else {
             cmd.run()?;
         }
@@ -47,8 +50,8 @@ fn main() -> std::io::Result<()> {
 
     if cli.transpile {
         println!("fn main() {{");
-        for line in token.split("\n") {
-            println!("\t{line}");
+        for token in token {
+            println!("\t{token}");
         }
         println!("}}");
     }

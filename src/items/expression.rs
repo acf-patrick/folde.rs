@@ -1,7 +1,5 @@
 use crate::{
-    items::variable::Type,
-    scope::Scope,
-    utils::{get_byte, input_error, sorted_subfolders, subfolder_count},
+    items::variable::Type, scope::Scope, transpile::Transpile, utils::{get_byte, input_error, sorted_subfolders, subfolder_count}
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -116,13 +114,18 @@ impl Expression {
     }
 
     pub fn execute(&self) -> std::io::Result<Variable> {
+        // expression does not have to mutate its scope
         let scope = self.scope.borrow();
 
         if self.expression_type == ExpressionType::Variable {
             let folder_count = subfolder_count(&self.folders[1])?;
 
             if let Some(var) = scope.get_variable(folder_count) {
-                Ok(var)
+                if var.is_null() {
+                    Err(input_error(format!("{} : use of uninitialized variable var_{folder_count}", self.folders[1])))
+                } else {
+                    Ok(var)
+                }
             } else {
                 Err(input_error(format!(
                     "{} : expression error, variable var_{folder_count} does not exist",
@@ -180,4 +183,38 @@ impl Expression {
             scope: scope.clone(),
         })
     }
+}
+
+impl Transpile for Expression {
+  fn transpile(&mut self) -> std::io::Result<String> {
+      match self.expression_type {
+        ExpressionType::Variable => {
+          self.execute()?;
+
+          let folder_count = subfolder_count(&self.folders[1])?;
+          Ok(format!("var_{folder_count}"))
+        }
+
+        ExpressionType::LiteralValue => {
+          let value = self.get_literal_value()?;
+          let value = match value {
+            Variable::Char(value) => format!("'{}'", value.unwrap()),
+            Variable::Float(value) => format!("{} as f32", value.unwrap()),
+            Variable::Int(value) => value.unwrap().to_string(),
+            Variable::String(value) => {
+              let value = value.unwrap();
+              if value.is_empty() {
+                "String::new()".to_owned()
+              } else {
+                format!("\"{}\".to_owned", value)
+              }
+            }
+          };
+
+          Ok(value)
+        }
+
+        _ => todo!()
+      }
+  }
 }

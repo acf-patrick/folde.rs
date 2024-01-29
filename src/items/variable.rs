@@ -104,6 +104,15 @@ impl Variable {
         }
     }
 
+    pub fn is_null(&self) -> bool {
+        match self {
+            Self::Char(value) => value.is_none(),
+            Self::Float(value) => value.is_none(),
+            Self::Int(value) => value.is_none(),
+            Self::String(value) => value.is_none(),
+        }
+    }
+
     pub fn same_as(&self, var: &Variable) -> bool {
         self.get_type() == var.get_type()
     }
