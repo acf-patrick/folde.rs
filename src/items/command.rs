@@ -1,9 +1,10 @@
 use crate::scope::Scope;
+use crate::transpile::Transpile;
 use std::io::Write;
 use std::{cell::RefCell, rc::Rc};
 
-use super::expression::Expression;
-use super::variable::Variable;
+use super::expression::{Expression, ExpressionType};
+use super::variable::{Type, Variable};
 use crate::utils::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +25,13 @@ pub struct Command {
     scope: Rc<RefCell<Scope>>,
 
     command_type: CommandType,
+
+    translation_context: Option<TranslationContext>,
+}
+
+#[derive(Clone, Default)]
+struct TranslationContext {
+    token: String,
 }
 
 impl Command {
@@ -39,29 +47,46 @@ impl Command {
         }
     }
 
-    fn declare_variable(&self) -> std::io::Result<()> {
+    fn declare_variable(&mut self) -> std::io::Result<()> {
         let folders_count = subfolder_count(&self.folders[1])?;
         let index = subfolder_count(&self.folders[2])?;
 
         let mut scope = self.scope.borrow_mut();
-        scope.declare_variable(folders_count, index)
+        scope.declare_variable(folders_count, index)?;
+
+        if let Some(ctx) = self.translation_context.as_mut() {
+            let var = scope.get_variable(index).unwrap();
+            ctx.token = format!("let mut var_{index}: {};", var.get_type().as_str());
+        }
+
+        Ok(())
     }
 
     /// 'let' instruction
-    fn store_expression(&self) -> std::io::Result<()> {
+    fn store_expression(&mut self) -> std::io::Result<()> {
         let var_index = subfolder_count(&self.folders[1])?;
 
-        let exp = Expression::new(&self.folders[2], &self.scope)?;
+        let mut exp = Expression::new(&self.folders[2], &self.scope)?;
         let value = exp.execute()?;
 
-        let mut scope = self.scope.borrow_mut();
+        if let Some(ctx) = self.translation_context.as_mut() {
+            let rvalue = exp.transpile()?;
 
-        if let Err(_) = scope.set_variable(var_index, value.clone()) {
-            scope
-                .declare_variable_with_type(value.get_type(), var_index)
-                .ok();
-            scope.set_variable(var_index, value)?;
+            let scope = self.scope.borrow();
+            if scope.get_variable(var_index).is_none() {
+                ctx.token += "let mut ";
+            }
+
+            if value.get_type() == Type::String && exp.expression_type == ExpressionType::Variable {
+                // make sure to not take ownership of the new string
+                ctx.token += &format!("var_{var_index} = {rvalue}.clone();");
+            } else {
+                ctx.token += &format!("var_{var_index} = {rvalue};");
+            }
         }
+
+        let mut scope = self.scope.borrow_mut();
+        scope.set_or_create_variable(var_index, value)?;
 
         Ok(())
     }
@@ -81,7 +106,7 @@ impl Command {
         let scope = Rc::new(RefCell::new(Scope::new(Some(self.scope.clone()))));
 
         for folder in subfolders {
-            let cmd = Command::new(&folder, &scope)?;
+            let mut cmd = Command::new(&folder, &scope)?;
             cmd.run()?;
         }
 
@@ -107,7 +132,7 @@ impl Command {
         Ok(var)
     }
 
-    pub fn run(&self) -> std::io::Result<()> {
+    pub fn run(&mut self) -> std::io::Result<()> {
         match self.command_type {
             CommandType::Declare => {
                 self.declare_variable()?;
@@ -141,10 +166,7 @@ impl Command {
                 let var_index = subfolder_count(&self.folders[1])?;
 
                 let mut scope = self.scope.borrow_mut();
-                scope
-                    .declare_variable_with_type(value.get_type(), var_index)
-                    .ok();
-                scope.set_variable(var_index, value)?;
+                scope.set_or_create_variable(var_index, value)?;
             }
         }
 
@@ -192,8 +214,126 @@ impl Command {
             command_type,
             folders: subfolders,
             scope: scope.clone(),
+            translation_context: None,
         };
 
         Ok(cmd)
+    }
+}
+
+impl Transpile for Command {
+    fn transpile(&mut self) -> std::io::Result<String> {
+        self.translation_context = Some(TranslationContext::default());
+        let ctx = self.translation_context.as_mut().unwrap();
+
+        match self.command_type {
+            CommandType::Declare => {
+                self.declare_variable()?;
+            }
+
+            CommandType::Let => {
+                self.store_expression()?;
+            }
+
+            CommandType::If => {
+                let mut exp = Expression::new(&self.folders[1], &self.scope)?;
+                let token = exp.transpile()?;
+                let value = exp.execute()?;
+
+                let token = match exp.expression_type {
+                    ExpressionType::EqualTo
+                    | ExpressionType::GreaterThan
+                    | ExpressionType::LessThan => token,
+                    _ => match value.get_type() {
+                        Type::Char => format!("{token} != '\0'"),
+                        Type::Float => format!("{token} != 0.0"),
+                        Type::Int => format!("{token} != 0"),
+                        Type::String => {
+                            if exp.expression_type == ExpressionType::Add {
+                                format!("!({token}).is_empty()")
+                            } else {
+                                format!("!{token}.is_empty()")
+                            }
+                        }
+                    },
+                };
+
+                ctx.token = format!("\nif {token} {{\n");
+
+                let subfolders = sorted_subfolders(&self.folders[2])?;
+                let scope = Rc::new(RefCell::new(Scope::new(Some(self.scope.clone()))));
+
+                for folder in subfolders {
+                    let mut cmd = Command::new(&folder, &scope)?;
+
+                    for line in cmd.transpile()?.split("\n") {
+                        ctx.token += &format!("\t{line}\n");
+                    }
+                }
+
+                ctx.token += "}";
+            }
+
+            CommandType::While => {
+                let mut exp = Expression::new(&self.folders[1], &self.scope)?;
+                let token = exp.transpile()?;
+                let value = exp.execute()?;
+
+                let token = match exp.expression_type {
+                    ExpressionType::EqualTo
+                    | ExpressionType::GreaterThan
+                    | ExpressionType::LessThan => token,
+                    _ => match value.get_type() {
+                        Type::Char => format!("{token} != '\0'"),
+                        Type::Float => format!("{token} != 0.0"),
+                        Type::Int => format!("{token} != 0"),
+                        Type::String => {
+                            if exp.expression_type == ExpressionType::Add {
+                                format!("!({token}).is_empty()")
+                            } else {
+                                format!("!{token}.is_empty()")
+                            }
+                        }
+                    },
+                };
+
+                ctx.token = format!("\nwhile {token} {{\n");
+
+                let subfolders = sorted_subfolders(&self.folders[2])?;
+                let scope = Rc::new(RefCell::new(Scope::new(Some(self.scope.clone()))));
+
+                for folder in subfolders {
+                    let mut cmd = Command::new(&folder, &scope)?;
+
+                    for line in cmd.transpile()?.split("\n") {
+                        ctx.token += &format!("\t{line}\n");
+                    }
+                }
+
+                ctx.token += "}";
+            }
+
+            CommandType::Print => {
+                let mut exp = Expression::new(&self.folders[1], &self.scope)?;
+                let token = exp.transpile()?;
+
+                ctx.token += &format!("print!(\"{{}}\", {token});\n");
+                ctx.token += "std::io::stdout().flush().unwrap();\n";
+            }
+
+            CommandType::Input => {
+                let var_index = subfolder_count(&self.folders[1])?;
+                let mut scope = self.scope.borrow_mut();
+
+                if scope.get_variable(var_index).is_none() {
+                  ctx.token += &format!("let mut var_{var_index} = String::new();\n");
+                }
+                ctx.token += &format!("std::io::stdin().readline(&mut var_{var_index}).unwrap();\n");
+
+                scope.set_or_create_variable(var_index, Variable::String(Some(String::new())))?;
+            }
+        }
+
+        Ok(self.translation_context.clone().unwrap().token)
     }
 }

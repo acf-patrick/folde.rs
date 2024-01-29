@@ -101,4 +101,14 @@ impl Scope {
             )))
         }
     }
+
+    pub fn set_or_create_variable(&mut self, index: usize, value: Variable) -> std::io::Result<()> {
+        if !self._set_variable(index, value.clone())? {
+            let var_type = value.get_type();
+            self.declare_variable_with_type(var_type, index).ok();
+            self.set_variable(index, value).ok();
+        }
+
+        Ok(())
+    }
 }

@@ -1,13 +1,11 @@
 use crate::{
-    items::variable::Type,
-    scope::Scope,
-    utils::{get_byte, input_error, sorted_subfolders, subfolder_count},
+    items::variable::Type, scope::Scope, transpile::Transpile, utils::{get_byte, input_error, sorted_subfolders, subfolder_count}
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::variable::Variable;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpressionType {
     Variable,
     Add,
@@ -116,13 +114,18 @@ impl Expression {
     }
 
     pub fn execute(&self) -> std::io::Result<Variable> {
+        // expression does not have to mutate its scope
         let scope = self.scope.borrow();
 
         if self.expression_type == ExpressionType::Variable {
             let folder_count = subfolder_count(&self.folders[1])?;
 
             if let Some(var) = scope.get_variable(folder_count) {
-                Ok(var)
+                if var.is_null() {
+                    Err(input_error(format!("{} : use of uninitialized variable var_{folder_count}", self.folders[1])))
+                } else {
+                    Ok(var)
+                }
             } else {
                 Err(input_error(format!(
                     "{} : expression error, variable var_{folder_count} does not exist",
@@ -180,4 +183,77 @@ impl Expression {
             scope: scope.clone(),
         })
     }
+}
+
+impl Transpile for Expression {
+  fn transpile(&mut self) -> std::io::Result<String> {
+      match self.expression_type {
+        ExpressionType::Variable => {
+          self.execute()?;
+
+          let folder_count = subfolder_count(&self.folders[1])?;
+          Ok(format!("var_{folder_count}"))
+        }
+
+        ExpressionType::LiteralValue => {
+          let value = match self.get_literal_value()? {
+            Variable::Char(value) => format!("'{}'", value.unwrap()),
+            Variable::Float(value) => format!("{} as f32", value.unwrap()),
+            Variable::Int(value) => value.unwrap().to_string(),
+            Variable::String(value) => {
+              let value = value.unwrap();
+              if value.is_empty() {
+                "String::new()".to_owned()
+              } else {
+                format!("\"{}\".to_owned()", value)
+              }
+            }
+          };
+
+          Ok(value)
+        }
+
+        _ => {
+          let left: String;
+          {
+            let mut exp = Self::new(&self.folders[1], &self.scope)?;
+            if exp.expression_type != ExpressionType::Variable && exp.expression_type != ExpressionType::LiteralValue {
+              left = format!("({})", exp.transpile()?);
+            } else {
+              left = exp.transpile()?;
+            }
+          }
+          
+          let right: String;
+          let mut right_is_string = false;
+          {
+            let mut exp = Self::new(&self.folders[2], &self.scope)?;
+            if exp.expression_type != ExpressionType::Variable && exp.expression_type != ExpressionType::LiteralValue {
+              right = format!("({})", exp.transpile()?);
+            } else {
+              right = exp.transpile()?;
+              
+              let value_type = exp.execute()?.get_type();
+              right_is_string = value_type == Type::String; 
+            }
+          }
+
+          let operators = HashMap::from([
+            (ExpressionType::Add, "+"),
+            (ExpressionType::Substract, "-"),
+            (ExpressionType::Multiply, "*"),
+            (ExpressionType::Divide, "/"),
+            (ExpressionType::GreaterThan, ">"),
+            (ExpressionType::LessThan, "<"),
+            (ExpressionType::EqualTo, "=="),
+          ]);
+
+          if right_is_string && self.expression_type == ExpressionType::Add {
+            Ok(format!("{left} + &{right}"))
+          } else {
+            Ok(format!("{left} {} {right}", operators.get(&self.expression_type).unwrap()))
+          }
+        }
+      }
+  }
 }
